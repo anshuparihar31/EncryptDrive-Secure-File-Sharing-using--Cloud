@@ -1,0 +1,3 @@
+Flask
+boto3
+pycryptodome   # For encryption algorithms like AES

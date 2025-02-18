@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EncryptDrive - Secure File Transfer</title>
+    <style>
+        /* Styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            max-width: 500px;
+            width: 90%;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        h1 {
+            color: #4A90E2;
+            font-size: 2em;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .file-label {
+            font-weight: bold;
+            color: #666;
+            margin-top: 20px;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        input[type="file"],
+        input[type="password"] {
+            display: block;
+            width: 100%;
+            margin-top: 15px;
+            padding: 12px;
+            font-size: 1em;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="file"]:focus,
+        input[type="password"]:focus {
+            border-color: #4A90E2;
+        }
+
+        .button {
+            background-color: #4A90E2;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            margin: 15px 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #357ABD;
+        }
+
+        #fileList {
+            list-style: none;
+            margin-top: 15px;
+            text-align: left;
+        }
+
+        #fileList li {
+            padding: 10px;
+            background: #f1f3f5;
+            border-radius: 4px;
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #fileList button {
+            background: #357ABD;
+            border: none;
+            color: #fff;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.3s;
+        }
+
+        #fileList button:hover {
+            background-color: #285A91;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>EncryptDrive</h1>
+        
+        <label for="fileInput" class="file-label">Choose File to Upload</label>
+        <input type="file" id="fileInput" />
+
+        <input type="password" id="uploadPassword" placeholder="Enter password for file" />
+
+        <div>
+            <button class="button" onclick="uploadFile()">Upload File</button>
+            <button class="button" onclick="listFiles()">List Files</button>
+        </div>
+
+        <ul id="fileList"></ul>
+
+        <input type="password" id="downloadPassword" placeholder="Enter password to download" style="display: none;" />
+    </div>
+
+    <script>
+        // Handle File Upload
+        async function uploadFile() {
+            const fileInput = document.getElementById("fileInput");
+            const password = document.getElementById("uploadPassword").value;
+            const file = fileInput.files[0];
+            
+            if (!file || !password) {
+                alert("Please select a file and enter a password.");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("password", password); // Attach password to the form
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                alert(result.message);
+                fileInput.value = "";  // Reset file input after upload
+                document.getElementById("uploadPassword").value = ""; // Clear password field
+            } catch (error) {
+                alert(`Upload failed: ${error.message}`);
+            }
+        }
+
+        // Fetch and Display List of Files in Cloud
+        async function listFiles() {
+            try {
+                const response = await fetch('/list-files');
+                const result = await response.json();
+                const fileListDiv = document.getElementById("fileList");
+                
+                fileListDiv.innerHTML = "<h3>Files in Cloud:</h3>";
+                result.files.forEach(filename => {
+                    const fileItem = document.createElement("li");
+                    fileItem.innerText = filename;
+                    
+                    const downloadButton = document.createElement("button");
+                    downloadButton.innerText = "Download";
+                    downloadButton.onclick = () => downloadFile(filename);
+
+                    fileItem.appendChild(downloadButton);
+                    fileListDiv.appendChild(fileItem);
+                });
+            } catch (error) {
+                alert(`Failed to retrieve file list: ${error.message}`);
+            }
+        }
+
+        // Handle File Download and Decryption
+        async function downloadFile(filename) {
+            const password = prompt("Enter the password to download the file:");
+            if (!password) {
+                alert("Download cancelled.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/download/${filename}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                // Check if the response is JSON (error) or Blob (file)
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error);
+                }
+
+                const blob = await response.blob();
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.click();
+                URL.revokeObjectURL(link.href); // Clean up URL after download
+            } catch (error) {
+                alert(`Failed to download file: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
