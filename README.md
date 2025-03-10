@@ -28,17 +28,17 @@ AES (**Advanced Encryption Standard**) is a **block cipher** that converts plain
 
 ## 📂 Installation & Setup  
 
-### For Python
+### 1️⃣ For Python
 ```sh
 pip install -r requirements.txt
 ```
 
-###  Run the Application
+### 2️⃣ Run the Application
 ```
 python encryptdrive.py
 ```
 
-### 1️⃣ Clone the Repository  
+### 3️⃣ Clone the Repository  
 ```sh
 git clone https://github.com/anshuparihar31/EncryptDrive-Secure-File-Sharing-using--Cloud.git
 cd EncryptDrive-Secure-File-Sharing-using--Cloud
